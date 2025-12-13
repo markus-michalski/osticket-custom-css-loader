@@ -50,8 +50,14 @@ class CustomCssLoaderPlugin extends Plugin
         // Version tracking and auto-update
         $this->checkVersion();
 
+        // Check if enabled (default to true if not set)
+        $enabled = $this->getConfig()->get('enabled');
+        if ($enabled === null) {
+            $enabled = true; // Default value
+        }
+
         // Skip injection if disabled
-        if (!$this->getConfig()->get('enabled')) {
+        if (!$enabled) {
             return;
         }
 
@@ -341,19 +347,25 @@ class CustomCssLoaderPlugin extends Plugin
      */
     function injectCssFiles($ost)
     {
-        // Check if plugin is enabled
-        if (!$this->getConfig()->get('enabled')) {
+        // Check if plugin is enabled (default to true if not set)
+        $enabled = $this->getConfig()->get('enabled');
+        if ($enabled === null) {
+            $enabled = true;
+        }
+        if (!$enabled) {
             return;
         }
 
         // Check if $ost supports addExtraHeader
         if (!$ost || !method_exists($ost, 'addExtraHeader')) {
+            error_log('[Custom-CSS-Loader] No $ost object or addExtraHeader method not available');
             return;
         }
 
         // Get current context
         $context = $this->getTargetContext();
         if (!$context) {
+            error_log('[Custom-CSS-Loader] No context detected (not staff and not client)');
             return; // No context (API, CLI, etc.)
         }
 
@@ -361,9 +373,12 @@ class CustomCssLoaderPlugin extends Plugin
         $files = $this->discoverCssFiles();
         $target_files = $files[$context] ?? [];
 
+        error_log('[Custom-CSS-Loader] Context: ' . $context . ', Found ' . count($target_files) . ' CSS files');
+
         foreach ($target_files as $file_info) {
             $link_tag = $this->buildLinkTag($file_info);
             $ost->addExtraHeader($link_tag);
+            error_log('[Custom-CSS-Loader] Injected: ' . $file_info['filename']);
         }
     }
 
