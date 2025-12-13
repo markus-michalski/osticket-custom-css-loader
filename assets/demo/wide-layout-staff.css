@@ -2,11 +2,55 @@
  * Wide Layout for osTicket Staff Panel
  *
  * Expands the default 960px container to use more screen space.
+ * Uses color scheme from osticket-customizations (MLM Gallery Branding).
  * Works with the Custom CSS Loader plugin.
  *
  * Filename: wide-layout-staff.css (contains "staff" = Admin Panel)
  * Location: assets/custom/css/wide-layout-staff.css
  */
+
+/* ==========================================================================
+   Color Variables - MLM Gallery Design System
+   ========================================================================== */
+
+:root {
+    /* Primary Colors */
+    --primary: #1E3A5F;              /* blue-700 - Main color */
+    --primary-rgb: 30, 58, 95;       /* RGB for transparency */
+
+    /* Neutral Colors */
+    --neutral-light: #FFFFFF;        /* White */
+    --neutral-warm: #EAE6DF;         /* Warm Beige */
+    --neutral-gray: #CFCBCC;         /* Warm Gray */
+    --neutral-dark: #2C2B29;         /* Dark Gray */
+}
+
+/* ==========================================================================
+   Header - Blue Background with White Logo
+   ========================================================================== */
+
+#header {
+    background-color: var(--primary) !important;
+    background-image: none !important;
+    border-color: var(--primary) !important;
+}
+
+/* Logo should be white on blue background */
+#header a#logo {
+    /* If logo is an image, it should already be white */
+    /* If text, make it white */
+    color: var(--neutral-light) !important;
+}
+
+/* Header links */
+#header a,
+#header .pull-right a {
+    color: var(--neutral-light) !important;
+}
+
+#header a:hover {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
 
 /* ==========================================================================
    Main Container - Wider Layout
@@ -23,6 +67,53 @@
 }
 
 /* ==========================================================================
+   Navigation - Prevent Overflow
+   ========================================================================== */
+
+/*
+ * Main navigation - stretch to full width and prevent overflow.
+ */
+#nav {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Navigation list - inline display */
+#nav ul {
+    display: flex;
+    flex-wrap: nowrap;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+#nav li {
+    flex-shrink: 0;
+}
+
+/* Prevent text wrapping in nav items */
+#nav li a {
+    white-space: nowrap;
+}
+
+/* Hide scrollbar but keep functionality */
+#nav::-webkit-scrollbar {
+    height: 4px;
+}
+
+#nav::-webkit-scrollbar-track {
+    background: var(--neutral-warm);
+}
+
+#nav::-webkit-scrollbar-thumb {
+    background: var(--neutral-gray);
+    border-radius: 2px;
+}
+
+/* ==========================================================================
    Content Area Adjustments
    ========================================================================== */
 
@@ -31,6 +122,7 @@
  */
 #content {
     width: 100%;
+    overflow-x: auto;
 }
 
 /*
@@ -38,23 +130,13 @@
  */
 #content table {
     width: 100%;
+    min-width: 800px;
 }
 
 /*
  * Ensure ticket queue uses full width.
  */
 .sticky.bar + form {
-    width: 100%;
-}
-
-/* ==========================================================================
-   Navigation Adjustments
-   ========================================================================== */
-
-/*
- * Main navigation - stretch to full width.
- */
-#nav {
     width: 100%;
 }
 
@@ -91,12 +173,27 @@
    ========================================================================== */
 
 /*
+ * Large screens (desktops).
+ */
+@media (min-width: 1400px) {
+    #container {
+        width: 95%;
+        max-width: 1800px;
+    }
+}
+
+/*
  * Medium screens (tablets, small laptops).
  */
 @media (max-width: 1024px) {
     #container {
         width: 98%;
         max-width: none;
+    }
+
+    /* Allow nav to scroll horizontally */
+    #nav {
+        overflow-x: auto;
     }
 }
 
@@ -108,22 +205,13 @@
         width: 100%;
         padding: 0 10px;
     }
-}
 
-/* ==========================================================================
-   Optional: Sidebar Layout (uncomment if using sidebar)
-   ========================================================================== */
+    /* Stack nav items or scroll */
+    #nav ul {
+        flex-wrap: wrap;
+    }
 
-/*
- * If osTicket has a sidebar, make it fixed width while content expands.
- */
-/*
-#sidebar {
-    width: 250px;
-    flex-shrink: 0;
+    #nav li {
+        flex-shrink: 1;
+    }
 }
-
-#main-content {
-    flex-grow: 1;
-}
-*/

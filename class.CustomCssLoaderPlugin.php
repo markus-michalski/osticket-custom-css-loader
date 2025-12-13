@@ -10,9 +10,6 @@
  * @license GPL-2.0-or-later
  */
 
-// DEBUG: Log when file is included
-error_log('[Custom-CSS-Loader] FILE INCLUDED at ' . date('Y-m-d H:i:s'));
-
 // Only include osTicket classes if they exist (not in test environment)
 if (defined('INCLUDE_DIR') && file_exists(INCLUDE_DIR . 'class.plugin.php')) {
     require_once INCLUDE_DIR . 'class.plugin.php';
@@ -33,10 +30,6 @@ if (file_exists(__DIR__ . '/config.php')) {
  */
 function custom_css_loader_ob_callback($buffer) {
     $css_tags = CustomCssLoaderPlugin::getCssLinkTags();
-
-    error_log('[Custom-CSS-Loader] OB CALLBACK called, buffer length: ' . strlen($buffer));
-    error_log('[Custom-CSS-Loader] CSS tags count: ' . count($css_tags));
-    error_log('[Custom-CSS-Loader] Has </head>: ' . (stripos($buffer, '</head>') !== false ? 'YES' : 'NO'));
 
     if (empty($css_tags) || stripos($buffer, '</head>') === false) {
         return $buffer;
@@ -104,9 +97,6 @@ class CustomCssLoaderPlugin extends Plugin
      */
     function bootstrap()
     {
-        // DEBUG: Log bootstrap call
-        error_log('[Custom-CSS-Loader] BOOTSTRAP called at ' . date('Y-m-d H:i:s'));
-
         // Version tracking and auto-update
         $this->checkVersion();
 
@@ -123,12 +113,6 @@ class CustomCssLoaderPlugin extends Plugin
 
         // Get current context
         $context = $this->getTargetContext();
-        $script = $_SERVER['SCRIPT_NAME'] ?? 'N/A';
-        error_log('[Custom-CSS-Loader] SCRIPT_NAME: ' . $script);
-        error_log('[Custom-CSS-Loader] Context detected: ' . ($context ?: 'NONE'));
-        error_log('[Custom-CSS-Loader] OSTSCPINC defined: ' . (defined('OSTSCPINC') ? 'YES' : 'NO'));
-        error_log('[Custom-CSS-Loader] OSTCLIENTINC defined: ' . (defined('OSTCLIENTINC') ? 'YES' : 'NO'));
-
         if (!$context) {
             return; // No web context (API, CLI, etc.)
         }
@@ -137,21 +121,14 @@ class CustomCssLoaderPlugin extends Plugin
         $files = $this->discoverCssFiles();
         $target_files = $files[$context] ?? [];
 
-        error_log('[Custom-CSS-Loader] CSS dir: ' . $this->getCssDirectoryPath());
-        error_log('[Custom-CSS-Loader] Found ' . count($target_files) . ' CSS files for context ' . $context);
-
         if (empty($target_files)) {
             return;
         }
 
         // Build link tags and store statically for the output buffer callback
         foreach ($target_files as $file_info) {
-            $tag = $this->buildLinkTag($file_info);
-            self::$css_link_tags[] = $tag;
-            error_log('[Custom-CSS-Loader] Added CSS tag: ' . $file_info['filename']);
+            self::$css_link_tags[] = $this->buildLinkTag($file_info);
         }
-
-        error_log('[Custom-CSS-Loader] Total CSS tags stored: ' . count(self::$css_link_tags));
     }
 
     /**
