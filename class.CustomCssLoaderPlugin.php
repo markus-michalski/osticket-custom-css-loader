@@ -19,6 +19,40 @@ if (file_exists(__DIR__ . '/config.php')) {
     require_once __DIR__ . '/config.php';
 }
 
+/**
+ * Output buffer callback for CSS injection
+ *
+ * This function is called when the output buffer is flushed.
+ * It injects CSS link tags before the </head> tag.
+ *
+ * @param string $buffer The output buffer contents
+ * @return string Modified buffer with CSS injected
+ */
+function custom_css_loader_ob_callback($buffer) {
+    $css_tags = CustomCssLoaderPlugin::getCssLinkTags();
+
+    if (empty($css_tags) || stripos($buffer, '</head>') === false) {
+        return $buffer;
+    }
+
+    // Build CSS injection string
+    $css_injection = "\n    <!-- Custom CSS Loader Plugin -->\n";
+    foreach ($css_tags as $tag) {
+        $css_injection .= "    " . $tag . "\n";
+    }
+    $css_injection .= "    <!-- /Custom CSS Loader Plugin -->\n";
+
+    // Inject before </head>
+    return str_ireplace('</head>', $css_injection . '</head>', $buffer);
+}
+
+// Start output buffering with callback at file include time (earliest possible)
+// This MUST happen before ANY output is sent
+if (!defined('CUSTOM_CSS_LOADER_OB_STARTED')) {
+    define('CUSTOM_CSS_LOADER_OB_STARTED', true);
+    ob_start('custom_css_loader_ob_callback');
+}
+
 class CustomCssLoaderPlugin extends Plugin
 {
     var $config_class = 'CustomCssLoaderConfig';
@@ -46,11 +80,20 @@ class CustomCssLoaderPlugin extends Plugin
     private static $css_link_tags = [];
 
     /**
+     * Get CSS link tags for injection (called by output buffer callback)
+     *
+     * @return array Array of HTML link tags
+     */
+    static function getCssLinkTags()
+    {
+        return self::$css_link_tags;
+    }
+
+    /**
      * Bootstrap plugin - called when osTicket initializes
      *
      * Note: During bootstrap(), the global $ost variable is not yet set.
-     * The osTicket object exists as a local variable in osTicket::start().
-     * We use output buffering to inject CSS into the HTML head section.
+     * CSS injection happens via output buffer callback registered at file include time.
      */
     function bootstrap()
     {
@@ -82,43 +125,10 @@ class CustomCssLoaderPlugin extends Plugin
             return;
         }
 
-        // Build link tags
+        // Build link tags and store statically for the output buffer callback
         foreach ($target_files as $file_info) {
             self::$css_link_tags[] = $this->buildLinkTag($file_info);
         }
-
-        // Start output buffering to inject CSS into HTML
-        ob_start(array(__CLASS__, 'injectCssIntoHtml'));
-    }
-
-    /**
-     * Output buffer callback - injects CSS link tags into HTML head
-     *
-     * @param string $html The buffered HTML output
-     * @return string Modified HTML with CSS injected
-     */
-    static function injectCssIntoHtml($html)
-    {
-        if (empty(self::$css_link_tags)) {
-            return $html;
-        }
-
-        // Only process HTML responses
-        if (stripos($html, '</head>') === false) {
-            return $html;
-        }
-
-        // Build CSS injection string
-        $css_injection = "\n    <!-- Custom CSS Loader Plugin -->\n";
-        foreach (self::$css_link_tags as $tag) {
-            $css_injection .= "    " . $tag . "\n";
-        }
-        $css_injection .= "    <!-- /Custom CSS Loader Plugin -->\n";
-
-        // Inject before </head>
-        $html = str_ireplace('</head>', $css_injection . '</head>', $html);
-
-        return $html;
     }
 
     /**
