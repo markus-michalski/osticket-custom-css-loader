@@ -1,0 +1,36 @@
+{
+    "name": "markus-michalski/osticket-custom-css-loader",
+    "description": "osTicket plugin that automatically loads custom CSS files for Staff Panel and Client Portal",
+    "type": "osticket-plugin",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "Markus Michalski",
+            "email": "info@markus-michalski.net"
+        }
+    ],
+    "require": {
+        "php": ">=7.4"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.6"
+    },
+    "autoload": {
+        "classmap": [
+            "class.CustomCssLoaderPlugin.php",
+            "config.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "CustomCssLoader\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "test:coverage": "phpunit --coverage-html coverage"
+    },
+    "config": {
+        "sort-packages": true
+    }
+}

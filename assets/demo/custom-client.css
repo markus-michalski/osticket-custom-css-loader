@@ -1,0 +1,159 @@
+/**
+ * Custom CSS for osTicket Client Portal
+ *
+ * This file is automatically loaded by the Custom CSS Loader plugin.
+ * Filename pattern: Any .css file with "client" in the name.
+ *
+ * Place your custom styles here to customize the Client Portal.
+ * Uncomment the examples below or add your own rules.
+ */
+
+/* ==========================================================================
+   Example: Container Width
+   ========================================================================== */
+
+/*
+ * Wider container for large screens.
+ * Improves readability on wide monitors.
+ */
+/*
+@media (min-width: 1200px) {
+    .container {
+        max-width: 1400px;
+    }
+}
+
+@media (min-width: 1600px) {
+    .container {
+        max-width: 1600px;
+    }
+}
+*/
+
+/* ==========================================================================
+   Example: Brand Colors
+   ========================================================================== */
+
+/*
+ * Custom color scheme (change to match your brand).
+ */
+/*
+:root {
+    --primary-color: #3498db;
+    --primary-hover: #2980b9;
+    --header-bg: #2c3e50;
+    --header-text: #ffffff;
+}
+
+#header {
+    background-color: var(--header-bg);
+}
+
+#header h1,
+#header a {
+    color: var(--header-text);
+}
+*/
+
+/* ==========================================================================
+   Example: Form Styling
+   ========================================================================== */
+
+/*
+ * Enhanced form field styling.
+ */
+/*
+.form-control,
+input[type="text"],
+input[type="email"],
+textarea,
+select {
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    padding: 10px 12px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-control:focus,
+input[type="text"]:focus,
+input[type="email"]:focus,
+textarea:focus,
+select:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+    outline: none;
+}
+*/
+
+/* ==========================================================================
+   Example: Submit Button Styling
+   ========================================================================== */
+
+/*
+ * Custom submit button styling.
+ */
+/*
+.btn-submit,
+input[type="submit"],
+button[type="submit"] {
+    background-color: #3498db;
+    border: none;
+    border-radius: 4px;
+    color: #fff;
+    padding: 12px 24px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.btn-submit:hover,
+input[type="submit"]:hover,
+button[type="submit"]:hover {
+    background-color: #2980b9;
+}
+*/
+
+/* ==========================================================================
+   Example: Ticket List Styling
+   ========================================================================== */
+
+/*
+ * Improved ticket list appearance.
+ */
+/*
+.ticket-info {
+    border-left: 3px solid #3498db;
+    padding-left: 15px;
+    margin-bottom: 15px;
+}
+
+.ticket-info.open {
+    border-left-color: #27ae60;
+}
+
+.ticket-info.closed {
+    border-left-color: #95a5a6;
+}
+*/
+
+/* ==========================================================================
+   Example: Footer Styling
+   ========================================================================== */
+
+/*
+ * Custom footer styling.
+ */
+/*
+#footer {
+    background-color: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+    padding: 20px 0;
+    margin-top: 40px;
+}
+*/
+
+/* ==========================================================================
+   Your Custom Styles Below
+   ========================================================================== */
+
+/* Add your custom CSS rules here */

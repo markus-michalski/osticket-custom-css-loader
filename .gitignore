@@ -1,0 +1,26 @@
+# Composer
+/vendor/
+composer.lock
+
+# PHPUnit
+/.phpunit.cache/
+/coverage/
+.phpunit.result.cache
+
+# IDE
+/.idea/
+/.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Release ZIPs
+*.zip
+
+# Logs
+*.log
+
+# Project documentation (not for release)
+CLAUDE.md
+_Screenshots/
