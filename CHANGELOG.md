@@ -16,6 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Nothing yet
 
+## [0.1.1] - 2025-12-13
+
+### Added
+- Add wide-layout demo CSS files
+
+### Fixed
+- Use output buffering for CSS injection
+- Add debug logging and fix null default value handling
+
 ## [0.1.0] - 2025-12-13
 
 ### Added
