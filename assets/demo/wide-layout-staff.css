@@ -1,0 +1,129 @@
+/**
+ * Wide Layout for osTicket Staff Panel
+ *
+ * Expands the default 960px container to use more screen space.
+ * Works with the Custom CSS Loader plugin.
+ *
+ * Filename: wide-layout-staff.css (contains "staff" = Admin Panel)
+ * Location: assets/custom/css/wide-layout-staff.css
+ */
+
+/* ==========================================================================
+   Main Container - Wider Layout
+   ========================================================================== */
+
+/*
+ * Default osTicket: #container { width: 960px; }
+ * This makes it responsive and wider on large screens.
+ */
+#container {
+    width: 95%;
+    max-width: 1800px;
+    margin: 0 auto 20px auto;
+}
+
+/* ==========================================================================
+   Content Area Adjustments
+   ========================================================================== */
+
+/*
+ * Make content area use full available width.
+ */
+#content {
+    width: 100%;
+}
+
+/*
+ * Ticket list tables - allow horizontal scrolling if needed.
+ */
+#content table {
+    width: 100%;
+}
+
+/*
+ * Ensure ticket queue uses full width.
+ */
+.sticky.bar + form {
+    width: 100%;
+}
+
+/* ==========================================================================
+   Navigation Adjustments
+   ========================================================================== */
+
+/*
+ * Main navigation - stretch to full width.
+ */
+#nav {
+    width: 100%;
+}
+
+/* ==========================================================================
+   Form Layout Adjustments
+   ========================================================================== */
+
+/*
+ * Settings tables - use more horizontal space.
+ */
+.settings_table {
+    width: 100%;
+}
+
+.settings_table td {
+    max-width: none;
+}
+
+/*
+ * Wider form inputs on large screens.
+ */
+@media (min-width: 1200px) {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    textarea,
+    select {
+        max-width: 600px;
+    }
+}
+
+/* ==========================================================================
+   Responsive Breakpoints
+   ========================================================================== */
+
+/*
+ * Medium screens (tablets, small laptops).
+ */
+@media (max-width: 1024px) {
+    #container {
+        width: 98%;
+        max-width: none;
+    }
+}
+
+/*
+ * Small screens (mobile).
+ */
+@media (max-width: 768px) {
+    #container {
+        width: 100%;
+        padding: 0 10px;
+    }
+}
+
+/* ==========================================================================
+   Optional: Sidebar Layout (uncomment if using sidebar)
+   ========================================================================== */
+
+/*
+ * If osTicket has a sidebar, make it fixed width while content expands.
+ */
+/*
+#sidebar {
+    width: 250px;
+    flex-shrink: 0;
+}
+
+#main-content {
+    flex-grow: 1;
+}
+*/

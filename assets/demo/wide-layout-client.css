@@ -1,0 +1,130 @@
+/**
+ * Wide Layout for osTicket Client Portal
+ *
+ * Expands the default 840px container to use more screen space.
+ * Works with the Custom CSS Loader plugin.
+ *
+ * Filename: wide-layout-client.css (contains "client" = Client Portal)
+ * Location: assets/custom/css/wide-layout-client.css
+ */
+
+/* ==========================================================================
+   Main Container - Wider Layout
+   ========================================================================== */
+
+/*
+ * Default osTicket Client: #container { width: 840px; }
+ * This makes it responsive and wider on large screens.
+ */
+#container {
+    width: 95%;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* ==========================================================================
+   Header Adjustments
+   ========================================================================== */
+
+/*
+ * Header stretches with container automatically.
+ */
+#header {
+    padding: 0 30px;
+}
+
+/* ==========================================================================
+   Content Area Adjustments
+   ========================================================================== */
+
+/*
+ * Landing page content.
+ */
+.landing-page,
+.landing-content {
+    width: 100%;
+    max-width: none;
+}
+
+/*
+ * Ticket list / forms - use full width.
+ */
+#content {
+    padding: 20px 30px;
+}
+
+/*
+ * Tables should expand.
+ */
+table {
+    width: 100%;
+}
+
+/* ==========================================================================
+   Form Layout Adjustments
+   ========================================================================== */
+
+/*
+ * Ticket forms - wider inputs.
+ */
+@media (min-width: 1200px) {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    textarea,
+    select {
+        max-width: 100%;
+    }
+
+    textarea {
+        min-width: 500px;
+    }
+}
+
+/* ==========================================================================
+   Navigation Adjustments
+   ========================================================================== */
+
+/*
+ * Navigation bar.
+ */
+#nav {
+    width: 100%;
+    padding: 0 20px;
+}
+
+/* ==========================================================================
+   Responsive Breakpoints
+   ========================================================================== */
+
+/*
+ * Medium screens (tablets, small laptops).
+ */
+@media (max-width: 1024px) {
+    #container {
+        width: 98%;
+        max-width: none;
+    }
+
+    #header {
+        padding: 0 15px;
+    }
+}
+
+/*
+ * Small screens (mobile).
+ */
+@media (max-width: 768px) {
+    #container {
+        width: 100%;
+        box-shadow: none;
+    }
+
+    #header {
+        padding: 0 10px;
+    }
+
+    #content {
+        padding: 10px 15px;
+    }
+}
