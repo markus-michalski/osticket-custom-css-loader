@@ -19,14 +19,10 @@
     --primary-rgb: 30, 58, 95;       /* RGB for transparency */
 
     /* Neutral Colors */
-    --neutral-light: #848282;        /* White */
+    --neutral-light: #FFFFFF;        /* White */
     --neutral-warm: #EAE6DF;         /* Warm Beige */
     --neutral-gray: #CFCBCC;         /* Warm Gray */
     --neutral-dark: #2C2B29;         /* Dark Gray */
-
-    /* Layout */
-    --container-width: 95%;
-    --container-max-width: 1800px;
 }
 
 /* ==========================================================================
@@ -36,75 +32,57 @@
 /*
  * Default osTicket: #container { width: 960px; }
  * This makes it responsive and wider on large screens.
+ *
+ * IMPORTANT: In osTicket, #header, #nav, and #content are ALL inside #container.
+ * So we only need to change the container width - everything else follows.
  */
 #container {
-    width: var(--container-width);
-    max-width: var(--container-max-width);
+    width: 95%;
+    max-width: 1800px;
     margin: 0 auto 20px auto;
 }
 
 /* ==========================================================================
-   Header - Blue Background, Same Width as Container
+   Header - Blue Background
    ========================================================================== */
 
 #header {
     background-color: var(--primary) !important;
     background-image: none !important;
     border-color: var(--primary) !important;
-    width: 100%;
-    box-sizing: border-box;
-    padding: 10px 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
 }
 
-/* Logo area */
+/* Logo - white text */
 #header a#logo {
     color: var(--neutral-light) !important;
-    flex-shrink: 0;
 }
 
-#header a#logo img {
-    max-height: 50px;
-    width: auto;
-}
-
-/* Info/links area on the right */
-#header #info,
-#header .pull-right {
-    color: var(--neutral-light) !important;
-    flex-shrink: 0;
-    white-space: nowrap;
-}
-
-/* Header links */
+/* Header links - white */
 #header a,
 #header .pull-right a,
 #header #info a {
-    color: var(--neutral-light) !important;
+    color: var(--primary) !important;
 }
 
 #header a:hover {
     color: rgba(255, 255, 255, 0.8) !important;
 }
 
+/* Info area text */
+#header #info,
+#header .pull-right {
+    color: var(--primary) !important;
+}
+
 /* ==========================================================================
-   Main Navigation - Same Width as Content
+   Navigation - Horizontal Scroll for Many Items
    ========================================================================== */
 
 #nav {
-    width: 100%;
-    box-sizing: border-box;
     overflow-x: auto;
     overflow-y: hidden;
+    white-space: nowrap;
     -webkit-overflow-scrolling: touch;
-}
-
-/* Navigation list */
-#nav > li {
-    display: inline-block;
-    vertical-align: top;
 }
 
 /* Prevent text wrapping in nav items */
@@ -127,40 +105,17 @@
 }
 
 /* ==========================================================================
-   Sub-Navigation (Queue Navigation) - Same Width
+   Sub-Navigation (Queue Navigation)
    ========================================================================== */
 
 #customQ_nav,
 nav#customQ_nav {
-    width: 100%;
-    box-sizing: border-box;
     overflow-x: auto;
     overflow-y: visible;
 }
 
 #customQ_nav #sub_nav {
-    display: flex;
-    flex-wrap: nowrap;
-    width: 100%;
-}
-
-#customQ_nav #sub_nav > li {
-    flex-shrink: 0;
-}
-
-/* ==========================================================================
-   Content Area - Full Width
-   ========================================================================== */
-
-#content {
-    width: 100%;
-    box-sizing: border-box;
-    overflow-x: auto;
-}
-
-/* pjax container should also be full width */
-#pjax-container {
-    width: 100%;
+    white-space: nowrap;
 }
 
 /* ==========================================================================
@@ -173,22 +128,9 @@ table.list {
     min-width: 900px;
 }
 
-/* Ensure ticket queue form uses full width */
-.sticky.bar + form {
-    width: 100%;
-}
-
-/* Sticky bar should span full width */
-.sticky.bar {
-    width: 100%;
-}
-
-.sticky.bar .content {
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
+/* Wrap content area for horizontal scroll on tables */
+#content {
+    overflow-x: auto;
 }
 
 /* ==========================================================================
@@ -214,25 +156,10 @@ table.list {
 }
 
 /* ==========================================================================
-   Footer - Same Width as Container
-   ========================================================================== */
-
-#footer {
-    width: 100%;
-    box-sizing: border-box;
-    text-align: center;
-}
-
-/* ==========================================================================
    Responsive Breakpoints
    ========================================================================== */
 
 @media (max-width: 1200px) {
-    :root {
-        --container-width: 98%;
-        --container-max-width: none;
-    }
-
     #container {
         width: 98%;
         max-width: none;
@@ -243,20 +170,5 @@ table.list {
     #container {
         width: 100%;
         padding: 0 10px;
-    }
-
-    #header {
-        flex-wrap: wrap;
-        padding: 10px;
-    }
-
-    #header #info {
-        width: 100%;
-        text-align: right;
-        margin-top: 10px;
-    }
-
-    #nav > li {
-        display: block;
     }
 }
