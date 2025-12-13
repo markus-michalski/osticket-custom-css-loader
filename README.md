@@ -117,7 +117,14 @@ GPL-2.0 - See [LICENSE](LICENSE) for details.
 
 Markus Michalski
 
+## Support Development
+
+This plugin is completely free and open source. If it saves you time or makes your work easier, I'd appreciate a small donation to keep me caffeinated while developing and maintaining this plugin!
+
+[![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://paypal.me/tondiar)
+
 ## Links
 
 - [GitHub Repository](https://github.com/markus-michalski/osticket-custom-css-loader)
+- [Plugin Wiki](https://faq.markus-michalski.net/en/osticket/custom-css-loader)
 - [osTicket](https://osticket.com)
