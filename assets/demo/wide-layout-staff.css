@@ -19,37 +19,14 @@
     --primary-rgb: 30, 58, 95;       /* RGB for transparency */
 
     /* Neutral Colors */
-    --neutral-light: #FFFFFF;        /* White */
+    --neutral-light: #848282;        /* White */
     --neutral-warm: #EAE6DF;         /* Warm Beige */
     --neutral-gray: #CFCBCC;         /* Warm Gray */
     --neutral-dark: #2C2B29;         /* Dark Gray */
-}
 
-/* ==========================================================================
-   Header - Blue Background with White Logo
-   ========================================================================== */
-
-#header {
-    background-color: var(--primary) !important;
-    background-image: none !important;
-    border-color: var(--primary) !important;
-}
-
-/* Logo should be white on blue background */
-#header a#logo {
-    /* If logo is an image, it should already be white */
-    /* If text, make it white */
-    color: var(--neutral-light) !important;
-}
-
-/* Header links */
-#header a,
-#header .pull-right a {
-    color: var(--neutral-light) !important;
-}
-
-#header a:hover {
-    color: rgba(255, 255, 255, 0.8) !important;
+    /* Layout */
+    --container-width: 95%;
+    --container-max-width: 1800px;
 }
 
 /* ==========================================================================
@@ -61,37 +38,73 @@
  * This makes it responsive and wider on large screens.
  */
 #container {
-    width: 95%;
-    max-width: 1800px;
+    width: var(--container-width);
+    max-width: var(--container-max-width);
     margin: 0 auto 20px auto;
 }
 
 /* ==========================================================================
-   Navigation - Prevent Overflow
+   Header - Blue Background, Same Width as Container
    ========================================================================== */
 
-/*
- * Main navigation - stretch to full width and prevent overflow.
- */
+#header {
+    background-color: var(--primary) !important;
+    background-image: none !important;
+    border-color: var(--primary) !important;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Logo area */
+#header a#logo {
+    color: var(--neutral-light) !important;
+    flex-shrink: 0;
+}
+
+#header a#logo img {
+    max-height: 50px;
+    width: auto;
+}
+
+/* Info/links area on the right */
+#header #info,
+#header .pull-right {
+    color: var(--neutral-light) !important;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+/* Header links */
+#header a,
+#header .pull-right a,
+#header #info a {
+    color: var(--neutral-light) !important;
+}
+
+#header a:hover {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* ==========================================================================
+   Main Navigation - Same Width as Content
+   ========================================================================== */
+
 #nav {
     width: 100%;
+    box-sizing: border-box;
     overflow-x: auto;
     overflow-y: hidden;
-    white-space: nowrap;
     -webkit-overflow-scrolling: touch;
 }
 
-/* Navigation list - inline display */
-#nav ul {
-    display: flex;
-    flex-wrap: nowrap;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-
-#nav li {
-    flex-shrink: 0;
+/* Navigation list */
+#nav > li {
+    display: inline-block;
+    vertical-align: top;
 }
 
 /* Prevent text wrapping in nav items */
@@ -99,7 +112,7 @@
     white-space: nowrap;
 }
 
-/* Hide scrollbar but keep functionality */
+/* Subtle scrollbar */
 #nav::-webkit-scrollbar {
     height: 4px;
 }
@@ -114,39 +127,74 @@
 }
 
 /* ==========================================================================
-   Content Area Adjustments
+   Sub-Navigation (Queue Navigation) - Same Width
    ========================================================================== */
 
-/*
- * Make content area use full available width.
- */
+#customQ_nav,
+nav#customQ_nav {
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: auto;
+    overflow-y: visible;
+}
+
+#customQ_nav #sub_nav {
+    display: flex;
+    flex-wrap: nowrap;
+    width: 100%;
+}
+
+#customQ_nav #sub_nav > li {
+    flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Content Area - Full Width
+   ========================================================================== */
+
 #content {
     width: 100%;
+    box-sizing: border-box;
     overflow-x: auto;
 }
 
-/*
- * Ticket list tables - allow horizontal scrolling if needed.
- */
-#content table {
+/* pjax container should also be full width */
+#pjax-container {
     width: 100%;
-    min-width: 800px;
 }
 
-/*
- * Ensure ticket queue uses full width.
- */
+/* ==========================================================================
+   Tables - Full Width with Horizontal Scroll
+   ========================================================================== */
+
+#content table,
+table.list {
+    width: 100%;
+    min-width: 900px;
+}
+
+/* Ensure ticket queue form uses full width */
 .sticky.bar + form {
     width: 100%;
+}
+
+/* Sticky bar should span full width */
+.sticky.bar {
+    width: 100%;
+}
+
+.sticky.bar .content {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
 }
 
 /* ==========================================================================
    Form Layout Adjustments
    ========================================================================== */
 
-/*
- * Settings tables - use more horizontal space.
- */
 .settings_table {
     width: 100%;
 }
@@ -155,9 +203,6 @@
     max-width: none;
 }
 
-/*
- * Wider form inputs on large screens.
- */
 @media (min-width: 1200px) {
     input[type="text"],
     input[type="email"],
@@ -169,49 +214,49 @@
 }
 
 /* ==========================================================================
+   Footer - Same Width as Container
+   ========================================================================== */
+
+#footer {
+    width: 100%;
+    box-sizing: border-box;
+    text-align: center;
+}
+
+/* ==========================================================================
    Responsive Breakpoints
    ========================================================================== */
 
-/*
- * Large screens (desktops).
- */
-@media (min-width: 1400px) {
-    #container {
-        width: 95%;
-        max-width: 1800px;
+@media (max-width: 1200px) {
+    :root {
+        --container-width: 98%;
+        --container-max-width: none;
     }
-}
 
-/*
- * Medium screens (tablets, small laptops).
- */
-@media (max-width: 1024px) {
     #container {
         width: 98%;
         max-width: none;
     }
-
-    /* Allow nav to scroll horizontally */
-    #nav {
-        overflow-x: auto;
-    }
 }
 
-/*
- * Small screens (mobile).
- */
 @media (max-width: 768px) {
     #container {
         width: 100%;
         padding: 0 10px;
     }
 
-    /* Stack nav items or scroll */
-    #nav ul {
+    #header {
         flex-wrap: wrap;
+        padding: 10px;
     }
 
-    #nav li {
-        flex-shrink: 1;
+    #header #info {
+        width: 100%;
+        text-align: right;
+        margin-top: 10px;
+    }
+
+    #nav > li {
+        display: block;
     }
 }
