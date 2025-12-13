@@ -42,8 +42,15 @@ class CustomCssLoaderPlugin extends Plugin
         return true;
     }
 
+    // Static cache for CSS link tags to inject
+    private static $css_link_tags = [];
+
     /**
      * Bootstrap plugin - called when osTicket initializes
+     *
+     * Note: During bootstrap(), the global $ost variable is not yet set.
+     * The osTicket object exists as a local variable in osTicket::start().
+     * We use output buffering to inject CSS into the HTML head section.
      */
     function bootstrap()
     {
@@ -61,11 +68,57 @@ class CustomCssLoaderPlugin extends Plugin
             return;
         }
 
-        // Inject CSS files for current context
-        global $ost;
-        if (isset($ost)) {
-            $this->injectCssFiles($ost);
+        // Get current context
+        $context = $this->getTargetContext();
+        if (!$context) {
+            return; // No web context (API, CLI, etc.)
         }
+
+        // Discover and prepare CSS files
+        $files = $this->discoverCssFiles();
+        $target_files = $files[$context] ?? [];
+
+        if (empty($target_files)) {
+            return;
+        }
+
+        // Build link tags
+        foreach ($target_files as $file_info) {
+            self::$css_link_tags[] = $this->buildLinkTag($file_info);
+        }
+
+        // Start output buffering to inject CSS into HTML
+        ob_start(array(__CLASS__, 'injectCssIntoHtml'));
+    }
+
+    /**
+     * Output buffer callback - injects CSS link tags into HTML head
+     *
+     * @param string $html The buffered HTML output
+     * @return string Modified HTML with CSS injected
+     */
+    static function injectCssIntoHtml($html)
+    {
+        if (empty(self::$css_link_tags)) {
+            return $html;
+        }
+
+        // Only process HTML responses
+        if (stripos($html, '</head>') === false) {
+            return $html;
+        }
+
+        // Build CSS injection string
+        $css_injection = "\n    <!-- Custom CSS Loader Plugin -->\n";
+        foreach (self::$css_link_tags as $tag) {
+            $css_injection .= "    " . $tag . "\n";
+        }
+        $css_injection .= "    <!-- /Custom CSS Loader Plugin -->\n";
+
+        // Inject before </head>
+        $html = str_ireplace('</head>', $css_injection . '</head>', $html);
+
+        return $html;
     }
 
     /**
