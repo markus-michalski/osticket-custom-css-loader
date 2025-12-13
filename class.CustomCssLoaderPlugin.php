@@ -123,6 +123,8 @@ class CustomCssLoaderPlugin extends Plugin
 
         // Get current context
         $context = $this->getTargetContext();
+        $script = $_SERVER['SCRIPT_NAME'] ?? 'N/A';
+        error_log('[Custom-CSS-Loader] SCRIPT_NAME: ' . $script);
         error_log('[Custom-CSS-Loader] Context detected: ' . ($context ?: 'NONE'));
         error_log('[Custom-CSS-Loader] OSTSCPINC defined: ' . (defined('OSTSCPINC') ? 'YES' : 'NO'));
         error_log('[Custom-CSS-Loader] OSTCLIENTINC defined: ' . (defined('OSTCLIENTINC') ? 'YES' : 'NO'));
@@ -371,8 +373,15 @@ class CustomCssLoaderPlugin extends Plugin
             return $this->testContext === 'staff';
         }
 
-        // Production: check osTicket constant
-        return defined('OSTSCPINC');
+        // Check constant first (may be set after bootstrap)
+        if (defined('OSTSCPINC')) {
+            return true;
+        }
+
+        // Fallback: detect via request path (works during bootstrap)
+        // Staff panel is in /scp/ directory
+        $script = $_SERVER['SCRIPT_NAME'] ?? '';
+        return (strpos($script, '/scp/') !== false);
     }
 
     /**
@@ -387,8 +396,20 @@ class CustomCssLoaderPlugin extends Plugin
             return $this->testContext === 'client';
         }
 
-        // Production: check osTicket constant
-        return defined('OSTCLIENTINC');
+        // Check constant first (may be set after bootstrap)
+        if (defined('OSTCLIENTINC')) {
+            return true;
+        }
+
+        // Fallback: detect via request path (works during bootstrap)
+        // Client portal is NOT in /scp/ and NOT in /api/
+        $script = $_SERVER['SCRIPT_NAME'] ?? '';
+        if (strpos($script, '/scp/') !== false || strpos($script, '/api/') !== false) {
+            return false;
+        }
+
+        // Must be a PHP file request (not static assets)
+        return (substr($script, -4) === '.php');
     }
 
     /**
