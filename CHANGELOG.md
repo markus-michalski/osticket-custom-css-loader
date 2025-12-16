@@ -16,6 +16,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Nothing yet
 
+## [2.0.0] - 2025-12-16
+
+### Changed
+- fixed version in plugin.php
+- update PHP matrix to 8.1+ and add PHPStan job
+- Add src/ and composer.json to release include
+- Major architecture overhaul with security hardening
+- Add support development section to README
+
+### Fixed
+- use readonly properties instead of readonly class for PHP 8.1
+
 ## [1.0.0] - 2025-12-13
 
 ### Added
