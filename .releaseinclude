@@ -1,9 +1,22 @@
+# Release Include Rules for Custom CSS Loader Plugin
+# Only files and patterns listed here will be included in release ZIPs
+
+# Core PHP Files
 plugin.php
 class.CustomCssLoaderPlugin.php
 config.php
+
+# Service Classes (PSR-4 autoloaded via Composer)
 src/
+
+# Assets
 assets/
+
+# Vendor (Composer Autoloader - No external dependencies, just our src/)
+vendor/autoload.php
+vendor/composer/
+
+# Documentation
 README.md
 LICENSE
 CHANGELOG.md
-composer.json

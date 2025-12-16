@@ -12,10 +12,8 @@ declare(strict_types=1);
  * @license GPL-2.0-or-later
  */
 
-// PSR-4 autoloader for new architecture
-if (file_exists(__DIR__ . '/vendor/autoload.php')) {
-    require_once __DIR__ . '/vendor/autoload.php';
-}
+// PSR-4 autoloader for new architecture (via Composer)
+require_once __DIR__ . '/vendor/autoload.php';
 
 // Only include osTicket classes if they exist (not in test environment)
 if (defined('INCLUDE_DIR') && file_exists(INCLUDE_DIR . 'class.plugin.php')) {
