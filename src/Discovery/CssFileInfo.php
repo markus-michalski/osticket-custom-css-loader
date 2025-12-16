@@ -7,15 +7,17 @@ namespace CustomCssLoader\Discovery;
 /**
  * Immutable value object representing a discovered CSS file.
  *
+ * Note: Using readonly properties instead of readonly class for PHP 8.1 compatibility.
+ *
  * @author Markus Michalski
  * @license GPL-2.0-or-later
  */
-readonly class CssFileInfo
+class CssFileInfo
 {
     public function __construct(
-        public string $path,
-        public string $filename,
-        public int $mtime
+        public readonly string $path,
+        public readonly string $filename,
+        public readonly int $mtime
     ) {
     }
 
