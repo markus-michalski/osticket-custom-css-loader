@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Custom CSS Loader Plugin Configuration
  *
@@ -15,53 +17,58 @@ if (defined('INCLUDE_DIR') && file_exists(INCLUDE_DIR . 'class.plugin.php')) {
 class CustomCssLoaderConfig extends PluginConfig
 {
     /**
-     * Translation helper for i18n support
+     * Translation helper for i18n support.
+     *
+     * @param string $plugin
+     * @return array{0: callable(string): string, 1: callable(string, string, int): string}
      */
-    static function translate($plugin = 'custom-css-loader')
+    public static function translate(string $plugin = 'custom-css-loader'): array
     {
         if (!method_exists('Plugin', 'translate')) {
-            return array(
-                function ($x) {
-                    return $x;
-                },
-                function ($x, $y, $n) {
-                    return $n != 1 ? $y : $x;
-                },
-            );
+            return [
+                static fn(string $x): string => $x,
+                static fn(string $x, string $y, int $n): string => $n !== 1 ? $y : $x,
+            ];
         }
+
+        /** @var array{0: callable(string): string, 1: callable(string, string, int): string} */
         return Plugin::translate($plugin);
     }
 
     /**
-     * Get configuration options for admin panel
+     * Get configuration options for admin panel.
+     *
+     * @return array<string, object>
      */
-    function getOptions()
+    public function getOptions(): array
     {
-        list($__, $_N) = self::translate();
+        [$__, $_N] = self::translate();
 
-        return array(
-            'enabled' => new BooleanField(array(
+        return [
+            'enabled' => new BooleanField([
                 'id' => 'enabled',
                 'label' => $__('Enable Custom CSS Loader'),
-                'configuration' => array(
-                    'desc' => $__('When enabled, CSS files from assets/custom/css/ will be automatically loaded. ' .
+                'configuration' => [
+                    'desc' => $__(
+                        'When enabled, CSS files from assets/custom/css/ will be automatically loaded. ' .
                         'Files with "staff" in the name load in Admin Panel, ' .
-                        'files with "client" load in Client Portal.')
-                ),
+                        'files with "client" load in Client Portal.'
+                    )
+                ],
                 'default' => true
-            )),
+            ]),
 
-            'installed_version' => new TextboxField(array(
+            'installed_version' => new TextboxField([
                 'id' => 'installed_version',
                 'label' => $__('Installed Version'),
-                'configuration' => array(
+                'configuration' => [
                     'desc' => $__('Currently installed version (automatically updated)'),
                     'size' => 10,
                     'length' => 10,
                     'disabled' => true
-                ),
+                ],
                 'default' => ''
-            ))
-        );
+            ])
+        ];
     }
 }

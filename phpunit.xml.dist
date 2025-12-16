@@ -3,7 +3,7 @@
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
          bootstrap="tests/bootstrap.php"
          colors="true"
-         verbose="true"
+         displayDetailsOnTestsThatTriggerWarnings="true"
          failOnRisky="true"
          failOnWarning="true">
 
@@ -13,16 +13,13 @@
         </testsuite>
     </testsuites>
 
-    <coverage>
+    <source>
         <include>
-            <directory suffix=".php">.</directory>
+            <directory suffix=".php">src</directory>
+            <file>class.CustomCssLoaderPlugin.php</file>
+            <file>config.php</file>
         </include>
-        <exclude>
-            <directory>vendor</directory>
-            <directory>tests</directory>
-            <file>plugin.php</file>
-        </exclude>
-    </coverage>
+    </source>
 
     <php>
         <env name="OSTICKET_TEST_MODE" value="true"/>

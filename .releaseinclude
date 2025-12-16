@@ -1,7 +1,9 @@
 plugin.php
 class.CustomCssLoaderPlugin.php
 config.php
+src/
 assets/
 README.md
 LICENSE
 CHANGELOG.md
+composer.json

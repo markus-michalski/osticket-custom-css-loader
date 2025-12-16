@@ -13,7 +13,7 @@ Automatically loads custom CSS files for osTicket's Staff Panel and Client Porta
 ## Requirements
 
 - osTicket 1.17 or higher
-- PHP 7.4 or higher
+- PHP 8.1 or higher
 
 ## Installation
 
