@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Nothing yet
 
+## [2.0.1] - 2025-12-16
+
+### Fixed
+- include vendor/autoload.php in release for PSR-4 autoloading
+
 ## [2.0.0] - 2025-12-16
 
 ### Changed
