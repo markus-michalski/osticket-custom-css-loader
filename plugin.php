@@ -10,7 +10,7 @@
 
 return [
     'id' => 'net.markus-michalski:custom-css-loader',
-    'version' => '2.0.0',
+    'version' => '1.0.0',
     'name' => 'Custom CSS Loader',
     'author' => 'Markus Michalski',
     'description' => 'Automatically loads custom CSS files from assets/custom/css/ for Staff Panel and Client Portal based on filename patterns.',
