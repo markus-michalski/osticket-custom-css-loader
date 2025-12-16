@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CustomCssLoader\Tests\Mocks;
 
 /**
@@ -14,51 +16,61 @@ namespace CustomCssLoader\Tests\Mocks;
  */
 class Plugin
 {
-    protected $config;
-    protected $instances = [];
+    protected PluginConfig $config;
+
+    /** @var array<array<string, mixed>> */
+    protected array $instances = [];
 
     public function __construct()
     {
         $this->config = new PluginConfig();
     }
 
-    public function getConfig()
+    public function getConfig(): PluginConfig
     {
         return $this->config;
     }
 
-    public function getName()
+    public function getName(): string
     {
         return 'Custom CSS Loader';
     }
 
-    public function isSingleton()
+    public function isSingleton(): bool
     {
         return true;
     }
 
-    public function getNumInstances()
+    public function getNumInstances(): int
     {
         return count($this->instances);
     }
 
-    public function addInstance($vars, &$errors)
+    /**
+     * @param array<string, mixed> $vars
+     * @param array<string> $errors
+     * @return bool
+     */
+    public function addInstance(array $vars, array &$errors): bool
     {
         $this->instances[] = $vars;
         return true;
     }
 
-    public function bootstrap()
+    public function bootstrap(): void
     {
         // Override in child classes
     }
 
-    public function enable()
+    /**
+     * @return bool|array<string>
+     */
+    public function enable(): bool|array
     {
         return true;
     }
 
-    public function disable()
+    public function disable(): bool
     {
         return true;
     }
@@ -74,32 +86,41 @@ if (!class_exists('Plugin', false)) {
  */
 class PluginConfig
 {
-    private $config = [
+    /** @var array<string, mixed> */
+    private array $config = [
         'enabled' => true,
         'installed_version' => '1.0.0',
     ];
 
-    public function get($key)
+    public function get(string $key): mixed
     {
         return $this->config[$key] ?? null;
     }
 
-    public function set($key, $value)
+    public function set(string $key, mixed $value): void
     {
         $this->config[$key] = $value;
     }
 
-    public function getForm()
+    public function getForm(): MockForm
     {
         return new MockForm();
     }
 
-    public function pre_save(&$config = [], &$errors = [])
+    /**
+     * @param array<string, mixed> $config
+     * @param array<string> $errors
+     * @return bool
+     */
+    public function pre_save(array &$config = [], array &$errors = []): bool
     {
         return true;
     }
 
-    public function getOptions()
+    /**
+     * @return array<string, object>
+     */
+    public function getOptions(): array
     {
         return [];
     }
@@ -115,7 +136,7 @@ if (!class_exists('PluginConfig', false)) {
  */
 class MockForm
 {
-    public function getField($name)
+    public function getField(string $name): MockFormField
     {
         return new MockFormField();
     }
@@ -126,7 +147,7 @@ class MockForm
  */
 class MockFormField
 {
-    public function addError($message)
+    public function addError(string $message): void
     {
         // No-op in mock
     }
@@ -134,12 +155,18 @@ class MockFormField
 
 /**
  * Mock BooleanField class
+ *
+ * @phpstan-type BooleanFieldConfig array{id?: string, label?: string, configuration?: array<string, mixed>, default?: bool}
  */
 class BooleanField extends MockFormField
 {
-    private $config;
+    /** @var BooleanFieldConfig */
+    private array $config;
 
-    public function __construct($config)
+    /**
+     * @param BooleanFieldConfig $config
+     */
+    public function __construct(array $config)
     {
         $this->config = $config;
     }
@@ -151,12 +178,18 @@ if (!class_exists('BooleanField', false)) {
 
 /**
  * Mock TextboxField class
+ *
+ * @phpstan-type TextboxFieldConfig array{id?: string, label?: string, configuration?: array<string, mixed>, default?: string}
  */
 class TextboxField extends MockFormField
 {
-    private $config;
+    /** @var TextboxFieldConfig */
+    private array $config;
 
-    public function __construct($config)
+    /**
+     * @param TextboxFieldConfig $config
+     */
+    public function __construct(array $config)
     {
         $this->config = $config;
     }
@@ -171,19 +204,23 @@ if (!class_exists('TextboxField', false)) {
  */
 class MockOsTicket
 {
-    private $headers = [];
+    /** @var array<string, string> */
+    private array $headers = [];
 
-    public function addExtraHeader($header, $pjax_script = false)
+    public function addExtraHeader(string $header, bool $pjax_script = false): void
     {
         $this->headers[md5($header)] = $header;
     }
 
-    public function getExtraHeaders()
+    /**
+     * @return array<string, string>
+     */
+    public function getExtraHeaders(): array
     {
         return $this->headers;
     }
 
-    public function clearHeaders()
+    public function clearHeaders(): void
     {
         $this->headers = [];
     }
@@ -194,9 +231,10 @@ class MockOsTicket
  */
 class Signal
 {
-    private static $handlers = [];
+    /** @var array<string, array<callable>> */
+    private static array $handlers = [];
 
-    public static function connect($signal, $callback)
+    public static function connect(string $signal, callable $callback): void
     {
         if (!isset(self::$handlers[$signal])) {
             self::$handlers[$signal] = [];
@@ -204,7 +242,7 @@ class Signal
         self::$handlers[$signal][] = $callback;
     }
 
-    public static function send($signal, ...$args)
+    public static function send(string $signal, mixed ...$args): void
     {
         if (!isset(self::$handlers[$signal])) {
             return;
@@ -215,12 +253,15 @@ class Signal
         }
     }
 
-    public static function getHandlers($signal)
+    /**
+     * @return array<callable>
+     */
+    public static function getHandlers(string $signal): array
     {
         return self::$handlers[$signal] ?? [];
     }
 
-    public static function clearHandlers($signal = null)
+    public static function clearHandlers(?string $signal = null): void
     {
         if ($signal === null) {
             self::$handlers = [];

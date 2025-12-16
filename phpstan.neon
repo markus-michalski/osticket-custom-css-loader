@@ -1,0 +1,15 @@
+parameters:
+    level: 8
+    paths:
+        - src
+        - class.CustomCssLoaderPlugin.php
+        - config.php
+    bootstrapFiles:
+        - tests/bootstrap.php
+    ignoreErrors:
+        # Mock Plugin doesn't have translate() method (osTicket-specific)
+        - '#Call to an undefined static method CustomCssLoader\\Tests\\Mocks\\Plugin::translate#'
+        # Dynamic orchestrator type stored in $GLOBALS
+        - '#PHPDoc tag @var above assignment does not specify variable name#'
+        - '#PHPDoc tag @var contains unknown class CssLoaderOrchestrator#'
+    reportUnmatchedIgnoredErrors: false

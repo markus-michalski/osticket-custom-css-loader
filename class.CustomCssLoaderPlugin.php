@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Custom CSS Loader Plugin for osTicket 1.18.x
  *
@@ -10,6 +12,11 @@
  * @license GPL-2.0-or-later
  */
 
+// PSR-4 autoloader for new architecture
+if (file_exists(__DIR__ . '/vendor/autoload.php')) {
+    require_once __DIR__ . '/vendor/autoload.php';
+}
+
 // Only include osTicket classes if they exist (not in test environment)
 if (defined('INCLUDE_DIR') && file_exists(INCLUDE_DIR . 'class.plugin.php')) {
     require_once INCLUDE_DIR . 'class.plugin.php';
@@ -19,31 +26,59 @@ if (file_exists(__DIR__ . '/config.php')) {
     require_once __DIR__ . '/config.php';
 }
 
+use CustomCssLoader\Context\ContextDetectorInterface;
+use CustomCssLoader\Context\ProductionContextDetector;
+use CustomCssLoader\Context\TestContextDetector;
+use CustomCssLoader\CssLoaderOrchestrator;
+use CustomCssLoader\Discovery\CssFileDiscoveryInterface;
+use CustomCssLoader\Discovery\CssFileInfo;
+use CustomCssLoader\Discovery\FilesystemCssDiscovery;
+use CustomCssLoader\Injection\InjectionStrategyInterface;
+use CustomCssLoader\Injection\OutputBufferInjectionStrategy;
+use CustomCssLoader\Rendering\CssRendererInterface;
+use CustomCssLoader\Rendering\HtmlCssRenderer;
+
 /**
- * Output buffer callback for CSS injection
+ * Global orchestrator instance for output buffer callback.
+ *
+ * @var CssLoaderOrchestrator|null
+ */
+$GLOBALS['__custom_css_loader_orchestrator'] = null;
+
+/**
+ * Output buffer callback for CSS injection.
  *
  * This function is called when the output buffer is flushed.
- * It injects CSS link tags before the </head> tag.
+ * It delegates to the orchestrator for actual injection.
+ *
+ * Security: Wrapped in try-catch to prevent output buffer crashes.
  *
  * @param string $buffer The output buffer contents
  * @return string Modified buffer with CSS injected
  */
-function custom_css_loader_ob_callback($buffer) {
-    $css_tags = CustomCssLoaderPlugin::getCssLinkTags();
+function custom_css_loader_ob_callback(string $buffer): string
+{
+    try {
+        $orchestrator = $GLOBALS['__custom_css_loader_orchestrator'] ?? null;
 
-    if (empty($css_tags) || stripos($buffer, '</head>') === false) {
-        return $buffer;
+        if ($orchestrator instanceof CssLoaderOrchestrator) {
+            return $orchestrator->injectIntoBuffer($buffer);
+        }
+
+        // Fallback: Use legacy static method if new orchestrator not initialized
+        if (class_exists('CustomCssLoaderPlugin')) {
+            return CustomCssLoaderPlugin::legacyInjectCss($buffer);
+        }
+    } catch (\Throwable $e) {
+        error_log(sprintf(
+            '[Custom CSS Loader] Output buffer callback failed: %s in %s:%d',
+            $e->getMessage(),
+            $e->getFile(),
+            $e->getLine()
+        ));
     }
 
-    // Build CSS injection string
-    $css_injection = "\n    <!-- Custom CSS Loader Plugin -->\n";
-    foreach ($css_tags as $tag) {
-        $css_injection .= "    " . $tag . "\n";
-    }
-    $css_injection .= "    <!-- /Custom CSS Loader Plugin -->\n";
-
-    // Inject before </head>
-    return str_ireplace('</head>', $css_injection . '</head>', $buffer);
+    return $buffer;
 }
 
 // Start output buffering with callback at file include time (earliest possible)
@@ -55,47 +90,90 @@ if (!defined('CUSTOM_CSS_LOADER_OB_STARTED')) {
 
 class CustomCssLoaderPlugin extends Plugin
 {
-    var $config_class = 'CustomCssLoaderConfig';
+    /** @var string */
+    public $config_class = 'CustomCssLoaderConfig';
 
     // CSS directory relative to osTicket root
-    const CSS_DIR = 'assets/custom/css';
+    public const CSS_DIR = 'assets/custom/css';
 
     // Filename patterns (case-insensitive)
-    const STAFF_PATTERN = '/staff/i';
-    const CLIENT_PATTERN = '/client/i';
+    public const STAFF_PATTERN = '/staff/i';
+    public const CLIENT_PATTERN = '/client/i';
 
-    // Test mode properties
+    // ========== New Architecture ==========
+
+    private ?CssLoaderOrchestrator $orchestrator = null;
+    private ?ContextDetectorInterface $contextDetector = null;
+    private ?CssFileDiscoveryInterface $discovery = null;
+    private ?CssRendererInterface $renderer = null;
+    private ?InjectionStrategyInterface $injectionStrategy = null;
+
+    // ========== Legacy Support ==========
+
+    /** @deprecated Use orchestrator instead */
     private ?string $testCssDirectory = null;
+
+    /** @deprecated Use orchestrator instead */
     private ?string $testContext = null;
 
     /**
-     * Only one instance of this plugin makes sense
+     * @deprecated Use orchestrator instead
+     * @var array<string>
      */
-    function isSingleton()
+    private static array $css_link_tags = [];
+
+    /**
+     * Only one instance of this plugin makes sense.
+     */
+    public function isSingleton(): bool
     {
         return true;
     }
 
-    // Static cache for CSS link tags to inject
-    private static $css_link_tags = [];
-
     /**
-     * Get CSS link tags for injection (called by output buffer callback)
+     * Get CSS link tags for injection (legacy support for output buffer callback).
      *
-     * @return array Array of HTML link tags
+     * @deprecated Use getOrchestrator()->getPendingCssLinks() instead
+     * @return array<string> Array of HTML link tags
      */
-    static function getCssLinkTags()
+    public static function getCssLinkTags(): array
     {
         return self::$css_link_tags;
     }
 
     /**
-     * Bootstrap plugin - called when osTicket initializes
+     * Legacy injection for backward compatibility with old output buffer callback.
+     *
+     * @internal
+     * @param string $buffer
+     * @return string
+     */
+    public static function legacyInjectCss(string $buffer): string
+    {
+        $css_tags = self::$css_link_tags;
+
+        if ($css_tags === [] || stripos($buffer, '</head>') === false) {
+            return $buffer;
+        }
+
+        // Build CSS injection string
+        $css_injection = "\n    <!-- Custom CSS Loader Plugin -->\n";
+        foreach ($css_tags as $tag) {
+            $css_injection .= "    " . $tag . "\n";
+        }
+        $css_injection .= "    <!-- /Custom CSS Loader Plugin -->\n";
+
+        // Inject before </head>
+        return str_ireplace('</head>', $css_injection . '</head>', $buffer);
+    }
+
+    /**
+     * Bootstrap plugin - called when osTicket initializes.
      *
      * Note: During bootstrap(), the global $ost variable is not yet set.
      * CSS injection happens via output buffer callback registered at file include time.
      */
-    function bootstrap()
+    public function bootstrap(): void
     {
         // Version tracking and auto-update
         $this->checkVersion();
@@ -111,40 +189,166 @@ class CustomCssLoaderPlugin extends Plugin
             return;
         }
 
-        // Get current context
-        $context = $this->getTargetContext();
-        if (!$context) {
-            return; // No web context (API, CLI, etc.)
-        }
+        // Initialize and use new orchestrator
+        $orchestrator = $this->getOrchestrator();
+        $orchestrator->setEnabled((bool) $enabled);
+        $orchestrator->prepare();
 
-        // Discover and prepare CSS files
-        $files = $this->discoverCssFiles();
-        $target_files = $files[$context] ?? [];
+        // Store in global for output buffer callback
+        $GLOBALS['__custom_css_loader_orchestrator'] = $orchestrator;
 
-        if (empty($target_files)) {
-            return;
-        }
-
-        // Build link tags and store statically for the output buffer callback
-        foreach ($target_files as $file_info) {
-            self::$css_link_tags[] = $this->buildLinkTag($file_info);
-        }
+        // Also populate legacy static array for backward compatibility
+        self::$css_link_tags = $orchestrator->getPendingCssLinks();
     }
 
     /**
-     * Called when plugin is enabled in admin panel
+     * Get or create the orchestrator.
+     *
+     * @return CssLoaderOrchestrator
      */
-    function enable()
+    public function getOrchestrator(): CssLoaderOrchestrator
     {
-        $errors = array();
+        if ($this->orchestrator === null) {
+            $this->orchestrator = new CssLoaderOrchestrator(
+                $this->getContextDetector(),
+                $this->getDiscoveryService(),
+                $this->getRendererService(),
+                $this->getInjectionStrategy()
+            );
+        }
+
+        return $this->orchestrator;
+    }
+
+    /**
+     * Get or create the context detector.
+     *
+     * @return ContextDetectorInterface
+     */
+    public function getContextDetector(): ContextDetectorInterface
+    {
+        if ($this->contextDetector === null) {
+            // Use test detector if test context is set (legacy support)
+            if ($this->testContext !== null) {
+                $this->contextDetector = new TestContextDetector($this->testContext);
+            } else {
+                $this->contextDetector = new ProductionContextDetector();
+            }
+        }
+
+        return $this->contextDetector;
+    }
+
+    /**
+     * Get or create the discovery service.
+     *
+     * @return CssFileDiscoveryInterface
+     */
+    public function getDiscoveryService(): CssFileDiscoveryInterface
+    {
+        if ($this->discovery === null) {
+            $this->discovery = new FilesystemCssDiscovery(
+                $this->getCssDirectoryPath()
+            );
+        }
+
+        return $this->discovery;
+    }
+
+    /**
+     * Get or create the renderer service.
+     *
+     * @return CssRendererInterface
+     */
+    public function getRendererService(): CssRendererInterface
+    {
+        if ($this->renderer === null) {
+            $this->renderer = new HtmlCssRenderer(
+                $this->getCssDirectoryUrl()
+            );
+        }
+
+        return $this->renderer;
+    }
+
+    /**
+     * Get or create the injection strategy.
+     *
+     * @return InjectionStrategyInterface
+     */
+    public function getInjectionStrategy(): InjectionStrategyInterface
+    {
+        if ($this->injectionStrategy === null) {
+            $this->injectionStrategy = new OutputBufferInjectionStrategy();
+        }
+
+        return $this->injectionStrategy;
+    }
+
+    /**
+     * Set custom context detector (for testing).
+     *
+     * @param ContextDetectorInterface $detector
+     * @return void
+     */
+    public function setContextDetector(ContextDetectorInterface $detector): void
+    {
+        $this->contextDetector = $detector;
+        $this->orchestrator = null; // Reset orchestrator to use new detector
+    }
+
+    /**
+     * Set custom discovery service (for testing).
+     *
+     * @param CssFileDiscoveryInterface $discovery
+     * @return void
+     */
+    public function setDiscoveryService(CssFileDiscoveryInterface $discovery): void
+    {
+        $this->discovery = $discovery;
+        $this->orchestrator = null; // Reset orchestrator to use new discovery
+    }
+
+    /**
+     * Set custom renderer (for testing).
+     *
+     * @param CssRendererInterface $renderer
+     * @return void
+     */
+    public function setRendererService(CssRendererInterface $renderer): void
+    {
+        $this->renderer = $renderer;
+        $this->orchestrator = null; // Reset orchestrator to use new renderer
+    }
+
+    /**
+     * Set custom injection strategy (for testing).
+     *
+     * @param InjectionStrategyInterface $strategy
+     * @return void
+     */
+    public function setInjectionStrategy(InjectionStrategyInterface $strategy): void
+    {
+        $this->injectionStrategy = $strategy;
+        $this->orchestrator = null; // Reset orchestrator to use new strategy
+    }
+
+    /**
+     * Called when plugin is enabled in admin panel.
+     *
+     * @return bool|array<string>
+     */
+    public function enable(): bool|array
+    {
+        $errors = [];
 
         // Auto-create instance for singleton plugin
         if ($this->isSingleton() && $this->getNumInstances() === 0) {
-            $vars = array(
+            $vars = [
                 'name' => $this->getName(),
                 'isactive' => 1,
                 'notes' => 'Auto-created singleton instance'
-            );
+            ];
 
             if (!$this->addInstance($vars, $errors)) {
                 return $errors;
@@ -160,25 +364,25 @@ class CustomCssLoaderPlugin extends Plugin
         // Save installed version
         $this->saveInstalledVersion();
 
-        return empty($errors) ? true : $errors;
+        return true;
     }
 
     /**
-     * Check plugin version and perform updates if needed
+     * Check plugin version and perform updates if needed.
      */
-    function checkVersion()
+    public function checkVersion(): void
     {
         if (!defined('INCLUDE_DIR')) {
             return;
         }
 
-        $plugin_file = INCLUDE_DIR . 'plugins/' . basename(dirname(__FILE__)) . '/plugin.php';
+        $plugin_file = INCLUDE_DIR . 'plugins/' . basename(__DIR__) . '/plugin.php';
 
         if (!file_exists($plugin_file)) {
             return;
         }
 
-        $plugin_info = include($plugin_file);
+        $plugin_info = include $plugin_file;
         $current_version = $plugin_info['version'] ?? '0.0.0';
         $installed_version = $this->getConfig()->get('installed_version');
 
@@ -188,9 +392,12 @@ class CustomCssLoaderPlugin extends Plugin
     }
 
     /**
-     * Perform plugin update
+     * Perform plugin update.
+     *
+     * @param string|null $from_version
+     * @param string $to_version
      */
-    function performUpdate($from_version, $to_version)
+    public function performUpdate(?string $from_version, string $to_version): void
     {
         // Ensure CSS directory exists on update
         $this->ensureCssDirectory();
@@ -200,31 +407,37 @@ class CustomCssLoaderPlugin extends Plugin
     }
 
     /**
-     * Save installed version to config
+     * Save installed version to config.
+     *
+     * @param string|null $version
      */
-    function saveInstalledVersion($version = null)
+    public function saveInstalledVersion(?string $version = null): void
     {
         if ($version === null && defined('INCLUDE_DIR')) {
-            $plugin_file = INCLUDE_DIR . 'plugins/' . basename(dirname(__FILE__)) . '/plugin.php';
+            $plugin_file = INCLUDE_DIR . 'plugins/' . basename(__DIR__) . '/plugin.php';
             if (file_exists($plugin_file)) {
-                $plugin_info = include($plugin_file);
+                $plugin_info = include $plugin_file;
                 $version = $plugin_info['version'] ?? '1.0.0';
             }
         }
 
-        if ($version) {
+        if ($version !== null) {
             $this->getConfig()->set('installed_version', $version);
         }
     }
 
     /**
-     * Create CSS directory if it doesn't exist
+     * Create CSS directory if it doesn't exist.
      *
      * @return bool Success status
      */
-    function ensureCssDirectory()
+    public function ensureCssDirectory(): bool
     {
         $css_dir = $this->getCssDirectoryPath();
+
+        if ($css_dir === '') {
+            return false;
+        }
 
         if (!is_dir($css_dir)) {
             if (!@mkdir($css_dir, 0755, true)) {
@@ -238,21 +451,25 @@ class CustomCssLoaderPlugin extends Plugin
     }
 
     /**
-     * Copy demo files to CSS directory if it's empty
+     * Copy demo files to CSS directory if it's empty.
      */
-    function copyDemoFilesIfEmpty()
+    public function copyDemoFilesIfEmpty(): void
     {
         $css_dir = $this->getCssDirectoryPath();
         $demo_dir = __DIR__ . '/assets/demo';
 
+        if ($css_dir === '') {
+            return;
+        }
+
         // Check if CSS directory is empty
         $existing_files = glob($css_dir . '/*.css');
-        if (!empty($existing_files)) {
+        if ($existing_files !== false && $existing_files !== []) {
             return; // Directory not empty, don't overwrite
         }
 
         // Demo files to copy
-        $demo_files = array('custom-staff.css', 'custom-client.css');
+        $demo_files = ['custom-staff.css', 'custom-client.css'];
 
         foreach ($demo_files as $file) {
             $source = $demo_dir . '/' . $file;
@@ -267,11 +484,11 @@ class CustomCssLoaderPlugin extends Plugin
     }
 
     /**
-     * Get the absolute path to the CSS directory
+     * Get the absolute path to the CSS directory.
      *
      * @return string CSS directory path
      */
-    function getCssDirectoryPath()
+    public function getCssDirectoryPath(): string
     {
         // Test mode: use test directory
         if ($this->testCssDirectory !== null) {
@@ -288,11 +505,11 @@ class CustomCssLoaderPlugin extends Plugin
     }
 
     /**
-     * Get the URL path to the CSS directory
+     * Get the URL path to the CSS directory.
      *
      * @return string CSS directory URL
      */
-    function getCssDirectoryUrl()
+    public function getCssDirectoryUrl(): string
     {
         if (defined('ROOT_PATH')) {
             return ROOT_PATH . self::CSS_DIR;
@@ -301,133 +518,76 @@ class CustomCssLoaderPlugin extends Plugin
     }
 
     /**
-     * Discover CSS files in the CSS directory
+     * Discover CSS files in the CSS directory.
      *
-     * @return array ['staff' => [...], 'client' => [...]]
+     * @return array{staff: array<array{path: string, filename: string, mtime: int}>, client: array<array{path: string, filename: string, mtime: int}>}
      */
-    function discoverCssFiles()
+    public function discoverCssFiles(): array
     {
-        $css_dir = $this->getCssDirectoryPath();
-        $result = ['staff' => [], 'client' => []];
+        $discovery = $this->getDiscoveryService();
+        $files = $discovery->discoverFiles();
 
-        if (!is_dir($css_dir)) {
-            return $result;
-        }
-
-        $files = glob($css_dir . '/*.css');
-        if (!$files) {
-            return $result;
-        }
-
-        foreach ($files as $file) {
-            $filename = basename($file);
-            $file_info = [
-                'path' => $file,
-                'filename' => $filename,
-                'mtime' => filemtime($file)
-            ];
-
-            if (preg_match(self::STAFF_PATTERN, $filename)) {
-                $result['staff'][] = $file_info;
-            } elseif (preg_match(self::CLIENT_PATTERN, $filename)) {
-                $result['client'][] = $file_info;
-            }
-            // Files without staff/client in name are ignored
-        }
-
-        return $result;
+        // Convert CssFileInfo objects to arrays for backward compatibility
+        return [
+            'staff' => array_map(
+                fn(CssFileInfo $f): array => $f->toArray(),
+                $files['staff']
+            ),
+            'client' => array_map(
+                fn(CssFileInfo $f): array => $f->toArray(),
+                $files['client']
+            ),
+        ];
     }
 
     /**
-     * Check if current context is Staff Control Panel
+     * Check if current context is Staff Control Panel.
      *
      * @return bool
      */
-    function isStaffContext()
+    public function isStaffContext(): bool
     {
-        // Test mode
-        if ($this->testContext !== null) {
-            return $this->testContext === 'staff';
-        }
-
-        // Check constant first (may be set after bootstrap)
-        if (defined('OSTSCPINC')) {
-            return true;
-        }
-
-        // Fallback: detect via request path (works during bootstrap)
-        // Staff panel is in /scp/ directory
-        $script = $_SERVER['SCRIPT_NAME'] ?? '';
-        return (strpos($script, '/scp/') !== false);
+        return $this->getContextDetector()->isStaff();
     }
 
     /**
-     * Check if current context is Client Portal
+     * Check if current context is Client Portal.
      *
      * @return bool
      */
-    function isClientContext()
+    public function isClientContext(): bool
     {
-        // Test mode
-        if ($this->testContext !== null) {
-            return $this->testContext === 'client';
-        }
-
-        // Check constant first (may be set after bootstrap)
-        if (defined('OSTCLIENTINC')) {
-            return true;
-        }
-
-        // Fallback: detect via request path (works during bootstrap)
-        // Client portal is NOT in /scp/ and NOT in /api/
-        $script = $_SERVER['SCRIPT_NAME'] ?? '';
-        if (strpos($script, '/scp/') !== false || strpos($script, '/api/') !== false) {
-            return false;
-        }
-
-        // Must be a PHP file request (not static assets)
-        return (substr($script, -4) === '.php');
+        return $this->getContextDetector()->isClient();
     }
 
     /**
-     * Get current target context
+     * Get current target context.
      *
      * @return string|null 'staff', 'client', or null
      */
-    function getTargetContext()
+    public function getTargetContext(): ?string
     {
-        if ($this->isStaffContext()) {
-            return 'staff';
-        }
-        if ($this->isClientContext()) {
-            return 'client';
-        }
-        return null;
+        return $this->getContextDetector()->detect();
     }
 
     /**
-     * Build HTML link tag for a CSS file
+     * Build HTML link tag for a CSS file.
      *
-     * @param array $file_info File information from discoverCssFiles()
+     * @param array{path: string, filename: string, mtime: int} $file_info File information from discoverCssFiles()
      * @return string HTML link tag
      */
-    function buildLinkTag($file_info)
+    public function buildLinkTag(array $file_info): string
     {
-        $url = $this->getCssDirectoryUrl() . '/' . $file_info['filename'];
-        $url .= '?v=' . $file_info['mtime']; // Cache-busting
-
-        // Security: escape URL to prevent XSS
-        $escaped_url = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
-
-        return '<link rel="stylesheet" href="' . $escaped_url . '">';
+        $cssFileInfo = CssFileInfo::fromArray($file_info);
+        return $this->getRendererService()->render($cssFileInfo);
     }
 
     /**
-     * Inject CSS files into the page via $ost->addExtraHeader()
+     * Inject CSS files into the page via $ost->addExtraHeader().
      *
      * @param object $ost osTicket main object (or MockOsTicket for tests)
      */
-    function injectCssFiles($ost)
+    public function injectCssFiles(object $ost): void
     {
         // Check if plugin is enabled (default to true if not set)
         $enabled = $this->getConfig()->get('enabled');
@@ -439,16 +599,16 @@ class CustomCssLoaderPlugin extends Plugin
         }
 
         // Check if $ost supports addExtraHeader
-        if (!$ost || !method_exists($ost, 'addExtraHeader')) {
+        if (!method_exists($ost, 'addExtraHeader')) {
             error_log('[Custom-CSS-Loader] No $ost object or addExtraHeader method not available');
             return;
         }
 
         // Get current context
         $context = $this->getTargetContext();
-        if (!$context) {
+        if ($context === null) {
             error_log('[Custom-CSS-Loader] No context detected (not staff and not client)');
-            return; // No context (API, CLI, etc.)
+            return;
         }
 
         // Discover and inject CSS files
@@ -464,25 +624,44 @@ class CustomCssLoaderPlugin extends Plugin
         }
     }
 
-    // ========== Test Helper Methods ==========
+    // ========== Legacy Test Helper Methods ==========
 
     /**
-     * Set test CSS directory (for unit tests)
+     * Set test CSS directory (for unit tests).
      *
+     * @deprecated Use setDiscoveryService() with FilesystemCssDiscovery instead
      * @param string $path
      */
-    function setTestCssDirectory($path)
+    public function setTestCssDirectory(string $path): void
     {
         $this->testCssDirectory = $path;
+        // Reset discovery to use new path
+        $this->discovery = new FilesystemCssDiscovery($path);
+        $this->orchestrator = null;
     }
 
     /**
-     * Set test context (for unit tests)
+     * Set test context (for unit tests).
      *
+     * @deprecated Use setContextDetector() with TestContextDetector instead
      * @param string|null $context 'staff', 'client', or null
      */
-    function setTestContext($context)
+    public function setTestContext(?string $context): void
     {
         $this->testContext = $context;
+        // Reset context detector
+        $this->contextDetector = new TestContextDetector($context);
+        $this->orchestrator = null;
+    }
+
+    /**
+     * Clear static state (for testing).
+     *
+     * @return void
+     */
+    public static function clearStaticState(): void
+    {
+        self::$css_link_tags = [];
+        $GLOBALS['__custom_css_loader_orchestrator'] = null;
     }
 }

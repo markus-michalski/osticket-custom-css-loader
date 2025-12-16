@@ -1,10 +1,19 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CustomCssLoader\Tests\Unit;
 
-use PHPUnit\Framework\TestCase;
-use CustomCssLoaderPlugin;
+use CustomCssLoader\Context\TestContextDetector;
+use CustomCssLoader\CssLoaderOrchestrator;
+use CustomCssLoader\Discovery\CssFileInfo;
+use CustomCssLoader\Discovery\FilesystemCssDiscovery;
+use CustomCssLoader\Injection\OutputBufferInjectionStrategy;
+use CustomCssLoader\Rendering\HtmlCssRenderer;
 use CustomCssLoader\Tests\Mocks\MockOsTicket;
+use CustomCssLoaderPlugin;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
 
 /**
  * Tests for CSS header injection functionality
@@ -27,12 +36,19 @@ class CssInjectionTest extends TestCase
         $this->plugin->setTestCssDirectory($this->testDir);
 
         $this->mockOst = new MockOsTicket();
+
+        // Clear static state
+        CustomCssLoaderPlugin::clearStaticState();
     }
 
     protected function tearDown(): void
     {
         // Clean up test directory
         $this->removeDirectory($this->testDir);
+
+        // Clear static state
+        CustomCssLoaderPlugin::clearStaticState();
+
         parent::tearDown();
     }
 
@@ -42,7 +58,7 @@ class CssInjectionTest extends TestCase
             return;
         }
 
-        $files = array_diff(scandir($dir), ['.', '..']);
+        $files = array_diff(scandir($dir) ?: [], ['.', '..']);
         foreach ($files as $file) {
             $path = $dir . '/' . $file;
             is_dir($path) ? $this->removeDirectory($path) : unlink($path);
@@ -55,10 +71,8 @@ class CssInjectionTest extends TestCase
         file_put_contents($this->testDir . '/' . $filename, $content);
     }
 
-    /**
-     * @test
-     */
-    public function testBuildsCssLinkTag(): void
+    #[Test]
+    public function buildsCssLinkTag(): void
     {
         $this->createTestFile('test-staff.css');
         $files = $this->plugin->discoverCssFiles();
@@ -70,10 +84,8 @@ class CssInjectionTest extends TestCase
         $this->assertStringContainsString('test-staff.css', $link);
     }
 
-    /**
-     * @test
-     */
-    public function testAddsFilemtimeToUrl(): void
+    #[Test]
+    public function addsFilemtimeToUrl(): void
     {
         $this->createTestFile('test-staff.css');
         $files = $this->plugin->discoverCssFiles();
@@ -84,10 +96,8 @@ class CssInjectionTest extends TestCase
         $this->assertMatchesRegularExpression('/\?v=\d+/', $link);
     }
 
-    /**
-     * @test
-     */
-    public function testCacheParamChangesOnFileUpdate(): void
+    #[Test]
+    public function cacheParamChangesOnFileUpdate(): void
     {
         $filename = 'test-staff.css';
         $this->createTestFile($filename);
@@ -100,16 +110,17 @@ class CssInjectionTest extends TestCase
         file_put_contents($this->testDir . '/' . $filename, '/* updated */');
         clearstatcache();
 
+        // Need to reset discovery service to pick up new mtime
+        $this->plugin->setTestCssDirectory($this->testDir);
+
         $files2 = $this->plugin->discoverCssFiles();
         $mtime2 = $files2['staff'][0]['mtime'];
 
         $this->assertGreaterThan($mtime1, $mtime2);
     }
 
-    /**
-     * @test
-     */
-    public function testInjectsStaffCssInStaffContext(): void
+    #[Test]
+    public function injectsStaffCssInStaffContext(): void
     {
         $this->createTestFile('my-staff-theme.css');
         $this->createTestFile('client-portal.css');
@@ -126,10 +137,8 @@ class CssInjectionTest extends TestCase
         $this->assertStringNotContainsString('client-portal.css', $headerString);
     }
 
-    /**
-     * @test
-     */
-    public function testInjectsClientCssInClientContext(): void
+    #[Test]
+    public function injectsClientCssInClientContext(): void
     {
         $this->createTestFile('my-staff-theme.css');
         $this->createTestFile('client-portal.css');
@@ -146,10 +155,8 @@ class CssInjectionTest extends TestCase
         $this->assertStringNotContainsString('my-staff-theme.css', $headerString);
     }
 
-    /**
-     * @test
-     */
-    public function testDoesNotInjectWhenDisabled(): void
+    #[Test]
+    public function doesNotInjectWhenDisabled(): void
     {
         $this->createTestFile('test-staff.css');
         $this->plugin->setTestContext('staff');
@@ -163,10 +170,8 @@ class CssInjectionTest extends TestCase
         $this->assertEmpty($headers);
     }
 
-    /**
-     * @test
-     */
-    public function testDoesNotInjectInUndefinedContext(): void
+    #[Test]
+    public function doesNotInjectInUndefinedContext(): void
     {
         $this->createTestFile('test-staff.css');
         $this->createTestFile('test-client.css');
@@ -180,10 +185,8 @@ class CssInjectionTest extends TestCase
         $this->assertEmpty($headers);
     }
 
-    /**
-     * @test
-     */
-    public function testHtmlEscapesUrl(): void
+    #[Test]
+    public function htmlEscapesUrl(): void
     {
         // Create file with potentially dangerous characters
         $this->createTestFile('staff-test.css');
@@ -196,10 +199,8 @@ class CssInjectionTest extends TestCase
         $this->assertStringContainsString('href="', $link);
     }
 
-    /**
-     * @test
-     */
-    public function testInjectsMultipleCssFiles(): void
+    #[Test]
+    public function injectsMultipleCssFiles(): void
     {
         $this->createTestFile('staff-theme-1.css');
         $this->createTestFile('staff-theme-2.css');
@@ -213,5 +214,178 @@ class CssInjectionTest extends TestCase
 
         // Should have 3 staff CSS files
         $this->assertCount(3, $headers);
+    }
+
+    // ========== New Architecture Tests ==========
+
+    #[Test]
+    public function rendererProducesValidHtml(): void
+    {
+        $renderer = new HtmlCssRenderer('/assets/custom/css');
+
+        $fileInfo = new CssFileInfo(
+            path: '/path/to/staff-theme.css',
+            filename: 'staff-theme.css',
+            mtime: 1234567890
+        );
+
+        $html = $renderer->render($fileInfo);
+
+        $this->assertStringContainsString('<link rel="stylesheet"', $html);
+        $this->assertStringContainsString('href="/assets/custom/css/staff-theme.css?v=1234567890"', $html);
+    }
+
+    #[Test]
+    public function rendererBlocksInvalidFilename(): void
+    {
+        $renderer = new HtmlCssRenderer('/assets/custom/css');
+
+        // Filename with special chars - should be blocked by security validation
+        $fileInfo = new CssFileInfo(
+            path: '/path/to/staff"theme.css',
+            filename: 'staff"theme.css',
+            mtime: 1234567890
+        );
+
+        $html = $renderer->render($fileInfo);
+
+        // Invalid filename should return empty string (defense-in-depth)
+        $this->assertEmpty($html);
+    }
+
+    #[Test]
+    public function rendererEscapesUrlParameter(): void
+    {
+        $renderer = new HtmlCssRenderer('/assets/custom/css');
+
+        // Valid filename with mtime that could contain special chars
+        $fileInfo = new CssFileInfo(
+            path: '/path/to/staff-theme.css',
+            filename: 'staff-theme.css',
+            mtime: 1234567890
+        );
+
+        $html = $renderer->render($fileInfo);
+
+        // URL should be properly escaped
+        $this->assertStringContainsString('href="', $html);
+        $this->assertStringContainsString('staff-theme.css?v=1234567890', $html);
+    }
+
+    #[Test]
+    public function outputBufferInjectionStrategyInjectsBeforeHead(): void
+    {
+        $strategy = new OutputBufferInjectionStrategy();
+
+        $buffer = '<!DOCTYPE html><html><head><title>Test</title></head><body></body></html>';
+        $cssLinks = ['<link rel="stylesheet" href="/test.css">'];
+
+        $result = $strategy->inject($buffer, $cssLinks);
+
+        $this->assertStringContainsString('<!-- Custom CSS Loader Plugin -->', $result);
+        $this->assertStringContainsString('<link rel="stylesheet" href="/test.css">', $result);
+        $this->assertStringContainsString('<!-- /Custom CSS Loader Plugin -->', $result);
+    }
+
+    #[Test]
+    public function outputBufferInjectionReturnsUnmodifiedIfNoHead(): void
+    {
+        $strategy = new OutputBufferInjectionStrategy();
+
+        $buffer = 'No HTML here, just text';
+        $cssLinks = ['<link rel="stylesheet" href="/test.css">'];
+
+        $result = $strategy->inject($buffer, $cssLinks);
+
+        $this->assertEquals($buffer, $result);
+    }
+
+    #[Test]
+    public function outputBufferInjectionReturnsUnmodifiedIfEmpty(): void
+    {
+        $strategy = new OutputBufferInjectionStrategy();
+
+        $buffer = '<!DOCTYPE html><html><head></head><body></body></html>';
+        $cssLinks = [];
+
+        $result = $strategy->inject($buffer, $cssLinks);
+
+        $this->assertEquals($buffer, $result);
+    }
+
+    #[Test]
+    public function orchestratorPreparesAndInjects(): void
+    {
+        $this->createTestFile('staff-theme.css');
+
+        $orchestrator = new CssLoaderOrchestrator(
+            new TestContextDetector('staff'),
+            new FilesystemCssDiscovery($this->testDir),
+            new HtmlCssRenderer('/assets/custom/css'),
+            new OutputBufferInjectionStrategy()
+        );
+
+        // Prepare CSS
+        $orchestrator->prepare();
+
+        $this->assertTrue($orchestrator->isPrepared());
+        $this->assertCount(1, $orchestrator->getPendingCssLinks());
+
+        // Inject into buffer
+        $buffer = '<!DOCTYPE html><html><head></head><body></body></html>';
+        $result = $orchestrator->injectIntoBuffer($buffer);
+
+        $this->assertStringContainsString('staff-theme.css', $result);
+    }
+
+    #[Test]
+    public function orchestratorRespectsDisabledState(): void
+    {
+        $this->createTestFile('staff-theme.css');
+
+        $orchestrator = new CssLoaderOrchestrator(
+            new TestContextDetector('staff'),
+            new FilesystemCssDiscovery($this->testDir),
+            new HtmlCssRenderer('/assets/custom/css'),
+            new OutputBufferInjectionStrategy(),
+            enabled: false
+        );
+
+        $orchestrator->prepare();
+
+        $this->assertFalse($orchestrator->isPrepared());
+        $this->assertEmpty($orchestrator->getPendingCssLinks());
+    }
+
+    #[Test]
+    public function orchestratorClearsState(): void
+    {
+        $this->createTestFile('staff-theme.css');
+
+        $orchestrator = new CssLoaderOrchestrator(
+            new TestContextDetector('staff'),
+            new FilesystemCssDiscovery($this->testDir),
+            new HtmlCssRenderer('/assets/custom/css'),
+            new OutputBufferInjectionStrategy()
+        );
+
+        $orchestrator->prepare();
+        $this->assertTrue($orchestrator->isPrepared());
+
+        $orchestrator->clear();
+        $this->assertFalse($orchestrator->isPrepared());
+        $this->assertEmpty($orchestrator->getPendingCssLinks());
+    }
+
+    #[Test]
+    public function pluginOrchestratorIntegration(): void
+    {
+        $this->createTestFile('staff-theme.css');
+        $this->plugin->setTestContext('staff');
+
+        // Get orchestrator and verify it uses injected services
+        $orchestrator = $this->plugin->getOrchestrator();
+
+        $this->assertInstanceOf(CssLoaderOrchestrator::class, $orchestrator);
     }
 }

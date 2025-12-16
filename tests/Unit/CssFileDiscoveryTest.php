@@ -1,9 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CustomCssLoader\Tests\Unit;
 
-use PHPUnit\Framework\TestCase;
+use CustomCssLoader\Discovery\FilesystemCssDiscovery;
 use CustomCssLoaderPlugin;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
 
 /**
  * Tests for CSS file discovery functionality
@@ -23,12 +27,19 @@ class CssFileDiscoveryTest extends TestCase
 
         $this->plugin = new CustomCssLoaderPlugin();
         $this->plugin->setTestCssDirectory($this->testDir);
+
+        // Clear static state before each test
+        CustomCssLoaderPlugin::clearStaticState();
     }
 
     protected function tearDown(): void
     {
         // Clean up test directory
         $this->removeDirectory($this->testDir);
+
+        // Clear static state after each test
+        CustomCssLoaderPlugin::clearStaticState();
+
         parent::tearDown();
     }
 
@@ -38,7 +49,7 @@ class CssFileDiscoveryTest extends TestCase
             return;
         }
 
-        $files = array_diff(scandir($dir), ['.', '..']);
+        $files = array_diff(scandir($dir) ?: [], ['.', '..']);
         foreach ($files as $file) {
             $path = $dir . '/' . $file;
             is_dir($path) ? $this->removeDirectory($path) : unlink($path);
@@ -51,10 +62,8 @@ class CssFileDiscoveryTest extends TestCase
         file_put_contents($this->testDir . '/' . $filename, $content);
     }
 
-    /**
-     * @test
-     */
-    public function testDiscoversCssFilesInDirectory(): void
+    #[Test]
+    public function discoversCssFilesInDirectory(): void
     {
         $this->createTestFile('test-staff.css');
         $this->createTestFile('test-client.css');
@@ -65,10 +74,8 @@ class CssFileDiscoveryTest extends TestCase
         $this->assertCount(1, $files['client']);
     }
 
-    /**
-     * @test
-     */
-    public function testSeparatesStaffAndClientFiles(): void
+    #[Test]
+    public function separatesStaffAndClientFiles(): void
     {
         $this->createTestFile('admin-staff-theme.css');
         $this->createTestFile('portal-client-custom.css');
@@ -88,10 +95,8 @@ class CssFileDiscoveryTest extends TestCase
         $this->assertContains('portal-client-custom.css', $clientFilenames);
     }
 
-    /**
-     * @test
-     */
-    public function testReturnsEmptyArrayForNonexistentDirectory(): void
+    #[Test]
+    public function returnsEmptyArrayForNonexistentDirectory(): void
     {
         $this->plugin->setTestCssDirectory('/nonexistent/path');
 
@@ -101,10 +106,8 @@ class CssFileDiscoveryTest extends TestCase
         $this->assertEmpty($files['client']);
     }
 
-    /**
-     * @test
-     */
-    public function testIgnoresFilesWithoutPattern(): void
+    #[Test]
+    public function ignoresFilesWithoutPattern(): void
     {
         $this->createTestFile('general-styles.css');
         $this->createTestFile('theme.css');
@@ -117,10 +120,8 @@ class CssFileDiscoveryTest extends TestCase
         $this->assertEmpty($files['client']);
     }
 
-    /**
-     * @test
-     */
-    public function testCaseInsensitivePatternMatching(): void
+    #[Test]
+    public function caseInsensitivePatternMatching(): void
     {
         $this->createTestFile('STAFF-uppercase.css');
         $this->createTestFile('Staff-mixed.css');
@@ -133,10 +134,8 @@ class CssFileDiscoveryTest extends TestCase
         $this->assertCount(2, $files['client']);
     }
 
-    /**
-     * @test
-     */
-    public function testIgnoresNonCssFiles(): void
+    #[Test]
+    public function ignoresNonCssFiles(): void
     {
         $this->createTestFile('staff-theme.css');
         $this->createTestFile('staff-notes.txt');
@@ -148,10 +147,8 @@ class CssFileDiscoveryTest extends TestCase
         $this->assertEmpty($files['client']);
     }
 
-    /**
-     * @test
-     */
-    public function testReturnsFileMtime(): void
+    #[Test]
+    public function returnsFileMtime(): void
     {
         $this->createTestFile('test-staff.css');
 
@@ -162,10 +159,8 @@ class CssFileDiscoveryTest extends TestCase
         $this->assertGreaterThan(0, $files['staff'][0]['mtime']);
     }
 
-    /**
-     * @test
-     */
-    public function testReturnsFilePath(): void
+    #[Test]
+    public function returnsFilePath(): void
     {
         $this->createTestFile('test-staff.css');
 
@@ -175,15 +170,32 @@ class CssFileDiscoveryTest extends TestCase
         $this->assertStringEndsWith('test-staff.css', $files['staff'][0]['path']);
     }
 
-    /**
-     * @test
-     */
-    public function testHandlesEmptyDirectory(): void
+    #[Test]
+    public function handlesEmptyDirectory(): void
     {
         // testDir is empty by default
         $files = $this->plugin->discoverCssFiles();
 
         $this->assertEmpty($files['staff']);
         $this->assertEmpty($files['client']);
+    }
+
+    #[Test]
+    public function discoveryServiceCanBeInjected(): void
+    {
+        // Create a custom discovery with custom patterns
+        $customDiscovery = new FilesystemCssDiscovery(
+            $this->testDir,
+            ['admin' => '/admin/i', 'public' => '/public/i']
+        );
+
+        $this->createTestFile('admin-theme.css');
+        $this->createTestFile('public-portal.css');
+
+        // Use discoverFilesRaw() for custom patterns beyond staff/client
+        $files = $customDiscovery->discoverFilesRaw();
+
+        $this->assertCount(1, $files['admin']);
+        $this->assertCount(1, $files['public']);
     }
 }
